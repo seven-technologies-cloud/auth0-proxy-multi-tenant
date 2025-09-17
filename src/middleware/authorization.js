@@ -7,37 +7,22 @@ const {
 
 class AuthorizationMiddleware {
   /**
-   * Check if user has required roles
+   * Check if user has required roles (Not applicable for M2M API)
+   * This method is kept for compatibility but always passes for M2M clients
    */
   static requireRoles(requiredRoles) {
     return (req, res, next) => {
       try {
         if (!req.user) {
-          // No authenticated user -> this is actually an authentication problem
           const { AuthenticationError } = require('../utils/errors');
           throw new AuthenticationError('Authentication required');
         }
 
-        const userRoles = req.user.roles || [];
-        const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
-
-        if (!hasRequiredRole) {
-          logger.warn('Insufficient roles:', {
-            userId: req.user.sub,
-            userRoles,
-            requiredRoles,
-          });
-
-          throw new InsufficientPermissionsError(requiredRoles, {
-            userRoles,
-            userId: req.user.sub,
-          });
-        }
-
-        logger.info('Role authorization successful:', {
-          userId: req.user.sub,
-          userRoles,
-          requiredRoles,
+        // For M2M API, role-based authorization is not applicable
+        // All authorization is based on master client status
+        logger.info('Role authorization skipped for M2M client:', {
+          clientId: req.user.sub,
+          isMasterClient: req.user.isMasterClient,
         });
 
         next();
@@ -49,39 +34,22 @@ class AuthorizationMiddleware {
   }
 
   /**
-   * Check if user has required permissions
+   * Check if user has required permissions (Not applicable for M2M API)
+   * This method is kept for compatibility but always passes for M2M clients
    */
   static requirePermissions(requiredPermissions) {
     return (req, res, next) => {
       try {
         if (!req.user) {
-          // No authenticated user -> treat as authentication error
           const { AuthenticationError } = require('../utils/errors');
           throw new AuthenticationError('Authentication required');
         }
 
-        const userPermissions = req.user.permissions || [];
-        const hasAllPermissions = requiredPermissions.every(permission => 
-          userPermissions.includes(permission)
-        );
-
-        if (!hasAllPermissions) {
-          logger.warn('Insufficient permissions:', {
-            userId: req.user.sub,
-            userPermissions,
-            requiredPermissions,
-          });
-
-          throw new InsufficientPermissionsError(requiredPermissions, {
-            userPermissions,
-            userId: req.user.sub,
-          });
-        }
-
-        logger.info('Permission authorization successful:', {
-          userId: req.user.sub,
-          userPermissions,
-          requiredPermissions,
+        // For M2M API, permission-based authorization is not applicable
+        // All authorization is based on master client status
+        logger.info('Permission authorization skipped for M2M client:', {
+          clientId: req.user.sub,
+          isMasterClient: req.user.isMasterClient,
         });
 
         next();
@@ -134,7 +102,8 @@ class AuthorizationMiddleware {
   }
 
   /**
-   * Require tenant admin role (for tenant-specific operations)
+   * Require tenant admin role (Simplified for M2M API)
+   * For M2M API, this is equivalent to requiring master client access
    */
   static requireTenantAdmin() {
     return (req, res, next) => {
@@ -144,27 +113,19 @@ class AuthorizationMiddleware {
           throw new AuthenticationError('Authentication required');
         }
 
-        const userRoles = req.user.roles || [];
-        const isTenantAdmin = userRoles.includes('tenant_admin') || userRoles.includes('admin');
-        const isMasterAdmin = req.user.isMasterClient || req.user.isM2M || userRoles.includes('master_admin');
-
-        if (!isTenantAdmin && !isMasterAdmin) {
-          logger.warn('Tenant admin access denied:', {
-            userId: req.user.sub,
-            roles: userRoles,
-            tenantId: req.user.tenant_id,
+        // For M2M API, only master clients can perform tenant admin operations
+        if (!req.user.isMasterClient) {
+          logger.warn('Tenant admin access denied for non-master client:', {
+            clientId: req.user.sub,
+            isMasterClient: req.user.isMasterClient,
           });
 
-          throw new InsufficientPermissionsError(['tenant_admin', 'admin'], {
-            userId: req.user.sub,
-            currentRoles: userRoles,
-          });
+          throw new AuthorizationError('Master client access required for tenant operations');
         }
 
         logger.info('Tenant admin authorization successful:', {
-          userId: req.user.sub,
-          isTenantAdmin,
-          isMasterAdmin,
+          clientId: req.user.sub,
+          isMasterClient: req.user.isMasterClient,
         });
 
         next();
@@ -228,7 +189,8 @@ class AuthorizationMiddleware {
   }
 
   /**
-   * Check if user can manage users (create, update, delete)
+   * Check if user can manage users (Simplified for M2M API)
+   * For M2M API, only master clients can manage users
    */
   static requireUserManagement() {
     return (req, res, next) => {
@@ -238,29 +200,19 @@ class AuthorizationMiddleware {
           throw new AuthenticationError('Authentication required');
         }
 
-        const userRoles = req.user.roles || [];
-        const canManageUsers = userRoles.includes('tenant_admin') || 
-                              userRoles.includes('admin') || 
-                              userRoles.includes('user_manager') ||
-                              req.user.isMasterClient || 
-                              req.user.isM2M ||
-                              userRoles.includes('master_admin');
-
-        if (!canManageUsers) {
-          logger.warn('User management access denied:', {
-            userId: req.user.sub,
-            roles: userRoles,
+        // For M2M API, only master clients can manage users
+        if (!req.user.isMasterClient) {
+          logger.warn('User management access denied for non-master client:', {
+            clientId: req.user.sub,
+            isMasterClient: req.user.isMasterClient,
           });
 
-          throw new InsufficientPermissionsError(['tenant_admin', 'admin', 'user_manager'], {
-            userId: req.user.sub,
-            currentRoles: userRoles,
-          });
+          throw new AuthorizationError('Master client access required for user management');
         }
 
         logger.info('User management authorization successful:', {
-          userId: req.user.sub,
-          roles: userRoles,
+          clientId: req.user.sub,
+          isMasterClient: req.user.isMasterClient,
         });
 
         next();
@@ -272,7 +224,8 @@ class AuthorizationMiddleware {
   }
 
   /**
-   * Check if user can access their own profile or manage others
+   * Check if user can access their own profile or manage others (Simplified for M2M API)
+   * For M2M API, only master clients can access user profiles
    */
   static requireSelfOrManagement(userIdParam = 'userId') {
     return (req, res, next) => {
@@ -282,44 +235,20 @@ class AuthorizationMiddleware {
           throw new AuthenticationError('Authentication required');
         }
 
-        const requestedUserId = req.params[userIdParam];
-        const currentUserId = req.user.sub;
-        
-        // Users can always access their own profile
-        if (requestedUserId === currentUserId) {
-          logger.info('Self-access authorized:', {
-            userId: currentUserId,
+        // For M2M API, only master clients can access user profiles
+        if (!req.user.isMasterClient) {
+          logger.warn('User access denied for non-master client:', {
+            clientId: req.user.sub,
+            requestedUserId: req.params[userIdParam],
+            isMasterClient: req.user.isMasterClient,
           });
-          return next();
+
+          throw new AuthorizationError('Master client access required for user profile access');
         }
 
-        // Check if user has management permissions
-        const userRoles = req.user.roles || [];
-        const canManageUsers = userRoles.includes('tenant_admin') || 
-                              userRoles.includes('admin') || 
-                              userRoles.includes('user_manager') ||
-                              req.user.isMasterClient ||
-                              req.user.isM2M ||
-                              userRoles.includes('master_admin');
-
-        if (!canManageUsers) {
-          logger.warn('User access denied:', {
-            currentUserId,
-            requestedUserId,
-            roles: userRoles,
-          });
-
-          throw new AuthorizationError('Cannot access other user profiles', {
-            currentUserId,
-            requestedUserId,
-            currentRoles: userRoles,
-          });
-        }
-
-        logger.info('User management access authorized:', {
-          currentUserId,
-          requestedUserId,
-          roles: userRoles,
+        logger.info('User access authorized for master client:', {
+          clientId: req.user.sub,
+          requestedUserId: req.params[userIdParam],
         });
 
         next();
@@ -331,7 +260,8 @@ class AuthorizationMiddleware {
   }
 
   /**
-   * Check if user can perform tenant management operations
+   * Check if user can perform tenant management operations (Simplified for M2M API)
+   * For M2M API, only master clients can manage tenants
    */
   static requireTenantManagement() {
     return (req, res, next) => {
@@ -341,24 +271,18 @@ class AuthorizationMiddleware {
           throw new AuthenticationError('Authentication required');
         }
 
-        // Only master admins can manage tenants
-        const isMasterAdmin = req.user.isMasterClient || req.user.isM2M || 
-                             (req.user.roles && req.user.roles.includes('master_admin'));
-
-        if (!isMasterAdmin) {
-          logger.warn('Tenant management access denied:', {
-            userId: req.user.sub,
-            roles: req.user.roles,
+        // For M2M API, only master clients can manage tenants
+        if (!req.user.isMasterClient) {
+          logger.warn('Tenant management access denied for non-master client:', {
+            clientId: req.user.sub,
+            isMasterClient: req.user.isMasterClient,
           });
 
-          throw new AuthorizationError('Tenant management requires master admin access', {
-            userId: req.user.sub,
-            currentRoles: req.user.roles,
-          });
+          throw new AuthorizationError('Master client access required for tenant management');
         }
 
         logger.info('Tenant management authorization successful:', {
-          userId: req.user.sub,
+          clientId: req.user.sub,
         });
 
         next();

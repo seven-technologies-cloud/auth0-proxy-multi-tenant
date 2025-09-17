@@ -17,11 +17,34 @@ jest.mock('../../../src/config', () => ({
   },
 }));
 
+// Mock file system operations
+jest.mock('fs', () => ({
+  promises: {
+    readFile: jest.fn(),
+    writeFile: jest.fn(),
+    mkdir: jest.fn(),
+  },
+}));
+
+// Mock path
+jest.mock('path', () => ({
+  join: jest.fn((...args) => args.join('/')),
+  dirname: jest.fn((path) => path.split('/').slice(0, -1).join('/')),
+}));
+
 describe('SeatService', () => {
   let seatService;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Mock file system operations to avoid actual file I/O
+    const fs = require('fs');
+    fs.promises.readFile.mockRejectedValue({ code: 'ENOENT' }); // File doesn't exist
+    fs.promises.writeFile.mockResolvedValue();
+    fs.promises.mkdir.mockResolvedValue();
+    
     seatService = new SeatService();
+    // Wait for initialization to complete
+    await new Promise(resolve => setTimeout(resolve, 10));
     // Clear any existing tenant data
     seatService.tenantSeats.clear();
   });

@@ -286,7 +286,7 @@ class UserService {
 
       // Handle role updates separately
       if (updates.roles) {
-        await this.updateUserRoles(userId, updates.roles, updatedBy);
+        await this.updateUserRoles(tenantId, userId, updates.roles, updatedBy);
       }
 
       // Transform and return updated user
@@ -386,7 +386,7 @@ class UserService {
   /**
    * Update user roles
    */
-  async updateUserRoles(userId, roleNames, updatedBy) {
+  async updateUserRoles(tenantId, userId, roleNames, updatedBy) {
     try {
       logger.info('Updating user roles:', userId);
 

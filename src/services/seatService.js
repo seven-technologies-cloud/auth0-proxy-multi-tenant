@@ -1,11 +1,13 @@
 const logger = require('../utils/logger');
 const { SeatLimitExceededError, TenantNotFoundError, BusinessLogicError } = require('../utils/errors');
 const config = require('../config');
+const fs = require('fs').promises;
+const path = require('path');
 
 class SeatService {
   constructor() {
-    // In a real implementation, this would connect to a database
-    // For now, we'll use in-memory storage for demonstration
+    // Use file-based storage for persistence
+    this.storageFile = path.join(process.cwd(), 'data', 'tenant-seats.json');
     this.tenantSeats = new Map();
     this.initializeService();
   }
@@ -13,8 +15,65 @@ class SeatService {
   /**
    * Initialize the seat service
    */
-  initializeService() {
-    logger.info('Seat service initialized');
+  async initializeService() {
+    try {
+      await this.loadSeatData();
+      logger.info('Seat service initialized with persistent storage');
+    } catch (error) {
+      logger.warn('Failed to load seat data, starting with empty storage:', error.message);
+      // Ensure data directory exists
+      await this.ensureDataDirectory();
+    }
+  }
+
+  /**
+   * Ensure data directory exists
+   */
+  async ensureDataDirectory() {
+    try {
+      const dataDir = path.dirname(this.storageFile);
+      await fs.mkdir(dataDir, { recursive: true });
+    } catch (error) {
+      logger.error('Failed to create data directory:', error);
+    }
+  }
+
+  /**
+   * Load seat data from persistent storage
+   */
+  async loadSeatData() {
+    try {
+      await this.ensureDataDirectory();
+      const data = await fs.readFile(this.storageFile, 'utf8');
+      const seatData = JSON.parse(data);
+      
+      // Convert back to Map
+      this.tenantSeats = new Map(Object.entries(seatData));
+      logger.info(`Loaded seat data for ${this.tenantSeats.size} tenants`);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        // File doesn't exist yet, start with empty Map
+        this.tenantSeats = new Map();
+        logger.info('No existing seat data found, starting with empty storage');
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Save seat data to persistent storage
+   */
+  async saveSeatData() {
+    try {
+      await this.ensureDataDirectory();
+      const data = Object.fromEntries(this.tenantSeats);
+      await fs.writeFile(this.storageFile, JSON.stringify(data, null, 2));
+      logger.debug('Seat data saved to persistent storage');
+    } catch (error) {
+      logger.error('Failed to save seat data:', error);
+      // Don't throw error to avoid breaking the main operation
+    }
   }
 
   /**
@@ -105,6 +164,7 @@ class SeatService {
       };
 
       this.tenantSeats.set(tenantId, updatedData);
+      await this.saveSeatData();
 
       logger.info(`Successfully reserved ${seatsToReserve} seats for tenant: ${tenantId}`);
 
@@ -166,6 +226,7 @@ class SeatService {
       };
 
       this.tenantSeats.set(tenantId, updatedData);
+      await this.saveSeatData();
 
       logger.info(`Successfully released ${seatsToRelease} seats for tenant: ${tenantId}`);
 
@@ -232,6 +293,7 @@ class SeatService {
       };
 
       this.tenantSeats.set(tenantId, updatedData);
+      await this.saveSeatData();
 
       logger.info(`Successfully updated seat limit for tenant ${tenantId} to ${newLimit}`);
 
@@ -385,6 +447,7 @@ class SeatService {
       };
 
       this.tenantSeats.set(tenantId, seatData);
+      await this.saveSeatData();
 
       return seatData;
     } catch (error) {
@@ -401,6 +464,7 @@ class SeatService {
       logger.info(`Removing seats for tenant: ${tenantId}`);
       
       const existed = this.tenantSeats.delete(tenantId);
+      await this.saveSeatData();
       
       if (existed) {
         logger.info(`Successfully removed seats for tenant: ${tenantId}`);

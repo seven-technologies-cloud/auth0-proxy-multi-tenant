@@ -265,7 +265,7 @@ const ValidationSchemas = {
 
   // User schemas
   createUser: Joi.object({
-    tenantId: Joi.string().optional(), // Allow M2M clients to specify tenant
+    tenantId: Joi.string().required(), // Required for M2M API
     email: Joi.string().email().required()
       .messages({
         'string.email': 'Please provide a valid email address',
@@ -293,6 +293,7 @@ const ValidationSchemas = {
   }),
 
   updateUser: Joi.object({
+    tenantId: Joi.string().required(), // Required for M2M API
     name: Joi.string().trim().min(2).max(100).optional(),
     email: Joi.string().email().optional(),
     password: Joi.string().min(8).max(128).optional()
@@ -333,6 +334,7 @@ const ValidationSchemas = {
   }),
 
   userListQuery: Joi.object({
+    tenantId: Joi.string().required(), // Required for M2M API
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(10),
     search: Joi.string().trim().max(100).optional(),
@@ -344,6 +346,7 @@ const ValidationSchemas = {
 
   // Role management schemas
   updateUserRoles: Joi.object({
+    tenantId: Joi.string().required(), // Required for M2M API
     roles: Joi.array().items(Joi.string().valid('user', 'admin', 'tenant_admin', 'user_manager')).min(1).required()
       .messages({
         'array.min': 'At least one role must be specified',

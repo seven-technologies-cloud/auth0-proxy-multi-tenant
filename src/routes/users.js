@@ -21,14 +21,20 @@ router.get('/',
   ErrorHandler.asyncHandler(async (req, res) => {
     logger.info('Getting users for tenant', {
       requestedBy: req.user.sub,
-      tenantId: req.user.tenant_id,
+      tenantId: req.query.tenantId,
       filters: req.query,
     });
 
-    // Use the user's tenant ID unless they're a master admin
-    const tenantId = (req.user.isMasterClient || req.user.isM2M) && req.query.tenantId 
-      ? req.query.tenantId 
-      : req.user.tenant_id;
+    // For M2M API, tenant ID must be provided in query parameters
+    const tenantId = req.query.tenantId;
+    if (!tenantId) {
+      return ErrorHandler.sendError(
+        res,
+        'VALIDATION_ERROR',
+        'Tenant ID is required in query parameters',
+        400
+      );
+    }
 
     const result = await userService.getUsers(tenantId, req.query, req.user);
 
@@ -53,14 +59,20 @@ router.post('/',
   ErrorHandler.asyncHandler(async (req, res) => {
     logger.info('Creating new user', {
       requestedBy: req.user.sub,
-      tenantId: req.user.tenant_id,
+      tenantId: req.body.tenantId,
       userEmail: req.body.email,
     });
 
-    // Use the user's tenant ID unless they're a master admin and specify a tenant
-    const tenantId = (req.user.isMasterClient || req.user.isM2M) && req.body.tenantId 
-      ? req.body.tenantId 
-      : req.user.tenant_id;
+    // For M2M API, tenant ID must be provided in request body
+    const tenantId = req.body.tenantId;
+    if (!tenantId) {
+      return ErrorHandler.sendError(
+        res,
+        'VALIDATION_ERROR',
+        'Tenant ID is required in request body',
+        400
+      );
+    }
 
     const user = await userService.createUser(tenantId, req.body, req.user);
 
@@ -87,15 +99,18 @@ router.get('/:userId',
     logger.info('Getting user details', {
       requestedBy: req.user.sub,
       userId: req.params.userId,
+      tenantId: req.query.tenantId,
     });
 
-    // Determine tenant ID based on user permissions
-    let tenantId = req.user.tenant_id;
-    
-    // If master admin, we need to get the user first to determine their tenant
-    if ((req.user.isMasterClient || req.user.isM2M)) {
-      // For master admins, we'll let the service handle tenant validation
-      tenantId = null;
+    // For M2M API, tenant ID must be provided in query parameters
+    const tenantId = req.query.tenantId;
+    if (!tenantId) {
+      return ErrorHandler.sendError(
+        res,
+        'VALIDATION_ERROR',
+        'Tenant ID is required in query parameters',
+        400
+      );
     }
 
     const user = await userService.getUser(tenantId, req.params.userId, req.user);
@@ -127,13 +142,19 @@ router.put('/:userId',
     logger.info('Updating user', {
       requestedBy: req.user.sub,
       userId: req.params.userId,
+      tenantId: req.body.tenantId,
       updates: Object.keys(req.body),
     });
 
-    // Determine tenant ID
-    let tenantId = req.user.tenant_id;
-    if ((req.user.isMasterClient || req.user.isM2M)) {
-      tenantId = null; // Let service handle it
+    // For M2M API, tenant ID must be provided in request body
+    const tenantId = req.body.tenantId;
+    if (!tenantId) {
+      return ErrorHandler.sendError(
+        res,
+        'VALIDATION_ERROR',
+        'Tenant ID is required in request body',
+        400
+      );
     }
 
     // Restrict what regular users can update about themselves
@@ -184,21 +205,18 @@ router.delete('/:userId',
     logger.info('Deleting user', {
       requestedBy: req.user.sub,
       userId: req.params.userId,
+      tenantId: req.query.tenantId,
     });
 
-    // Prevent users from deleting themselves
-    if (req.params.userId === req.user.sub) {
+    // For M2M API, tenant ID must be provided in query parameters
+    const tenantId = req.query.tenantId;
+    if (!tenantId) {
       return ErrorHandler.sendError(
         res,
-        'INVALID_OPERATION',
-        'Users cannot delete their own account',
+        'VALIDATION_ERROR',
+        'Tenant ID is required in query parameters',
         400
       );
-    }
-
-    let tenantId = req.user.tenant_id;
-    if ((req.user.isMasterClient || req.user.isM2M)) {
-      tenantId = null; // Let service handle it
     }
 
     const result = await userService.deleteUser(tenantId, req.params.userId, req.user);
@@ -224,11 +242,18 @@ router.get('/:userId/roles',
     logger.info('Getting user roles', {
       requestedBy: req.user.sub,
       userId: req.params.userId,
+      tenantId: req.query.tenantId,
     });
 
-    let tenantId = req.user.tenant_id;
-    if ((req.user.isMasterClient || req.user.isM2M)) {
-      tenantId = null;
+    // For M2M API, tenant ID must be provided in query parameters
+    const tenantId = req.query.tenantId;
+    if (!tenantId) {
+      return ErrorHandler.sendError(
+        res,
+        'VALIDATION_ERROR',
+        'Tenant ID is required in query parameters',
+        400
+      );
     }
 
     const result = await userService.getUserRoles(tenantId, req.params.userId, req.user);
@@ -258,20 +283,23 @@ router.put('/:userId/roles',
     logger.info('Updating user roles', {
       requestedBy: req.user.sub,
       userId: req.params.userId,
+      tenantId: req.body.tenantId,
       newRoles: req.body.roles,
     });
 
-    // Prevent users from modifying their own roles
-    if (req.params.userId === req.user.sub) {
+    // For M2M API, tenant ID must be provided in request body
+    const tenantId = req.body.tenantId;
+    if (!tenantId) {
       return ErrorHandler.sendError(
         res,
-        'INVALID_OPERATION',
-        'Users cannot modify their own roles',
+        'VALIDATION_ERROR',
+        'Tenant ID is required in request body',
         400
       );
     }
 
     const result = await userService.updateUserRoles(
+      tenantId,
       req.params.userId,
       req.body.roles,
       req.user
@@ -366,12 +394,19 @@ router.get('/stats',
   ErrorHandler.asyncHandler(async (req, res) => {
     logger.info('Getting user statistics', {
       requestedBy: req.user.sub,
-      tenantId: req.user.tenant_id,
+      tenantId: req.query.tenantId,
     });
 
-    const tenantId = (req.user.isMasterClient || req.user.isM2M) && req.query.tenantId 
-      ? req.query.tenantId 
-      : req.user.tenant_id;
+    // For M2M API, tenant ID must be provided in query parameters
+    const tenantId = req.query.tenantId;
+    if (!tenantId) {
+      return ErrorHandler.sendError(
+        res,
+        'VALIDATION_ERROR',
+        'Tenant ID is required in query parameters',
+        400
+      );
+    }
 
     const stats = await userService.getUserStats(tenantId);
 
@@ -399,21 +434,18 @@ router.post('/:userId/block',
     logger.info('Blocking user', {
       requestedBy: req.user.sub,
       userId: req.params.userId,
+      tenantId: req.body.tenantId,
     });
 
-    // Prevent users from blocking themselves
-    if (req.params.userId === req.user.sub) {
+    // For M2M API, tenant ID must be provided in request body
+    const tenantId = req.body.tenantId;
+    if (!tenantId) {
       return ErrorHandler.sendError(
         res,
-        'INVALID_OPERATION',
-        'Users cannot block themselves',
+        'VALIDATION_ERROR',
+        'Tenant ID is required in request body',
         400
       );
-    }
-
-    let tenantId = req.user.tenant_id;
-    if ((req.user.isMasterClient || req.user.isM2M)) {
-      tenantId = null;
     }
 
     const user = await userService.updateUser(
@@ -447,11 +479,18 @@ router.post('/:userId/unblock',
     logger.info('Unblocking user', {
       requestedBy: req.user.sub,
       userId: req.params.userId,
+      tenantId: req.body.tenantId,
     });
 
-    let tenantId = req.user.tenant_id;
-    if ((req.user.isMasterClient || req.user.isM2M)) {
-      tenantId = null;
+    // For M2M API, tenant ID must be provided in request body
+    const tenantId = req.body.tenantId;
+    if (!tenantId) {
+      return ErrorHandler.sendError(
+        res,
+        'VALIDATION_ERROR',
+        'Tenant ID is required in request body',
+        400
+      );
     }
 
     const user = await userService.updateUser(

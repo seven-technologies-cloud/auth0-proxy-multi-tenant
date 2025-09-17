@@ -79,7 +79,7 @@ logger.logRequest = (req, res, next) => {
 
     if (req.user) {
       logData.userId = req.user.sub;
-      logData.tenantId = req.user.tenant_id;
+      logData.tenantId = req.body?.tenantId || req.query?.tenantId || 'unknown';
     }
 
     if (res.statusCode >= 400) {
@@ -113,7 +113,7 @@ logger.logError = (error, req = null) => {
     if (req.user) {
       errorData.user = {
         id: req.user.sub,
-        tenantId: req.user.tenant_id,
+        tenantId: req.body?.tenantId || req.query?.tenantId || 'unknown',
       };
     }
   }

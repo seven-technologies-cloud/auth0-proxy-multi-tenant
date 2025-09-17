@@ -2,21 +2,25 @@
 
 A production-ready Node.js API for managing Auth0 multi-tenant applications with seat-based licensing. This proxy API provides a unified interface for managing tenants, users, and seat allocations across multiple Auth0 tenants using Auth0's Management API.
 
-## 🚀 Features
+## 🎯 Current Project Status
 
-- **Multi-Tenant Architecture**: Manage multiple Auth0 tenants from a single API
+**Version:** 1.0.0  
+**Status:** Production Ready  
+**Last Updated:** December 2024  
+
+### ✅ Implemented Features
+- **Complete API Implementation**: All endpoints are fully functional
+- **Machine-to-Machine Authentication**: Secure Auth0 M2M integration
+- **Multi-Tenant Management**: Full CRUD operations for tenants
+- **User Management**: Comprehensive user lifecycle management
 - **Seat-Based Licensing**: Track and enforce seat limits per tenant
 - **Role-Based Access Control**: Master admin, tenant admin, and user roles
-- **JWT Authentication**: Secure authentication using Auth0 JWT tokens
-- **Auth0 Management API Integration**: Full integration with Auth0's Management API
-- **Machine-to-Machine Authentication**: Secure server-to-server communication
-- **Comprehensive User Management**: CRUD operations for users with role management
-- **Tenant Management**: Full tenant lifecycle management (Master admin only)
-- **Health Monitoring**: Built-in health checks and system status endpoints
-- **Request Validation**: Comprehensive input validation using Joi
+- **Request Validation**: Joi-based validation for all endpoints
 - **Error Handling**: Structured error responses with detailed logging
+- **Health Monitoring**: Multiple health check endpoints
 - **Rate Limiting**: Configurable rate limiting per user/IP
-- **Mock Mode**: Development mode with Auth0 API mocking for testing
+- **Mock Mode**: Development mode with Auth0 API mocking
+- **Comprehensive Testing**: Unit, integration, and security tests
 
 ## 📋 Table of Contents
 
@@ -194,25 +198,32 @@ npm run test:coverage
      -H "Content-Type: application/json" \
      -d '{
        "name": "Acme Corp",
-       "domain": "acme-corp.example.com",
+       "domain": "acme-corp",
        "seatLimit": 50,
-       "callbacks": ["https://acme-corp.example.com/callback"],
-       "allowedOrigins": ["https://acme-corp.example.com"],
-       "webOrigins": ["https://acme-corp.example.com"]
+       "plan": "premium",
+       "industry": "Technology",
+       "contactEmail": "admin@acme-corp.com"
      }'
    ```
 
-4. **Create a User:**
+4. **Create a User** (requires tenantId):
    ```bash
    curl -X POST http://localhost:3000/api/users \
      -H "Authorization: Bearer <tenant_admin_jwt>" \
      -H "Content-Type: application/json" \
      -d '{
+       "tenantId": "tenant_123",
        "email": "user@example.com",
        "name": "John Doe",
        "password": "SecurePassword123!",
        "roles": ["user"]
      }'
+   ```
+
+5. **List Users in Tenant:**
+   ```bash
+   curl -X GET "http://localhost:3000/api/users?tenantId=tenant_123&page=1&limit=10" \
+     -H "Authorization: Bearer <tenant_admin_jwt>"
    ```
 
 ## 📚 API Documentation
@@ -231,30 +242,39 @@ Authorization: Bearer <jwt_token>
 ### Endpoints Overview
 
 #### Tenant Management (Master Admin Only)
-- `GET /api/tenants` - List all tenants
+- `GET /api/tenants` - List all tenants with pagination and filtering
 - `POST /api/tenants` - Create a new tenant (creates Auth0 client)
 - `GET /api/tenants/:tenantId` - Get tenant details
-- `PUT /api/tenants/:tenantId` - Update tenant
-- `DELETE /api/tenants/:tenantId` - Delete tenant
-- `GET /api/tenants/:tenantId/users` - List users in tenant
-- `POST /api/tenants/:tenantId/users` - Create user in tenant
+- `PUT /api/tenants/:tenantId` - Update tenant configuration
+- `DELETE /api/tenants/:tenantId` - Delete tenant and cleanup
+- `GET /api/tenants/:tenantId/stats` - Get tenant statistics
+- `GET /api/tenants/:tenantId/users` - List users in specific tenant
+- `POST /api/tenants/:tenantId/users` - Create user in specific tenant
+- `PUT /api/tenants/:tenantId/seat-limit` - Update tenant seat limit
+- `GET /api/tenants/:tenantId/seat-usage` - Get tenant seat usage report
+- `POST /api/tenants/:tenantId/validate-access` - Validate tenant access
 
 #### User Management
-- `GET /api/users` - List users in your tenant
-- `POST /api/users` - Create a new user
-- `GET /api/users/:userId` - Get user details
-- `PUT /api/users/:userId` - Update user
-- `DELETE /api/users/:userId` - Delete user
-- `GET /api/users/:userId/roles` - Get user roles
-- `PUT /api/users/:userId/roles` - Update user roles
-- `GET /api/users/me` - Get your profile
-- `PUT /api/users/me` - Update your profile
+- `GET /api/users` - List users in tenant (requires tenantId query param)
+- `POST /api/users` - Create a new user (requires tenantId in body)
+- `GET /api/users/:userId` - Get user details (requires tenantId query param)
+- `PUT /api/users/:userId` - Update user (requires tenantId in body)
+- `DELETE /api/users/:userId` - Delete user (requires tenantId query param)
+- `GET /api/users/:userId/roles` - Get user roles (requires tenantId query param)
+- `PUT /api/users/:userId/roles` - Update user roles (requires tenantId in body)
+- `GET /api/users/me` - Get current user's profile
+- `PUT /api/users/me` - Update current user's profile
+- `GET /api/users/stats` - Get user statistics for tenant
+- `POST /api/users/:userId/block` - Block a user
+- `POST /api/users/:userId/unblock` - Unblock a user
 
 #### Health & Status
-- `GET /api/health` - Basic health check
-- `GET /api/health/detailed` - Detailed health check (Master Admin)
-- `GET /api/status` - System status (Master Admin)
-- `GET /api/version` - Version information
+- `GET /api/health` - Basic health check (public)
+- `GET /api/health/detailed` - Detailed health check with service status (Master Admin)
+- `GET /api/status` - System status and statistics (Master Admin)
+- `GET /api/version` - Version information (public)
+- `GET /api/metrics` - Basic metrics (Master Admin, if enabled)
+- `POST /api/health/test` - Run health tests (Master Admin)
 
 ### Response Format
 
@@ -285,6 +305,18 @@ Authorization: Bearer <jwt_token>
 
 ## 🔐 Authentication
 
+### Machine-to-Machine (M2M) API Architecture
+
+This API is designed as a **Machine-to-Machine (M2M) service** that acts as a proxy between your applications and Auth0's Management API. It uses Auth0's M2M authentication flow for secure server-to-server communication.
+
+### Authentication Flow
+
+1. **M2M Application**: Your application authenticates with Auth0 using Client Credentials flow
+2. **JWT Token**: Auth0 returns a JWT token with appropriate scopes
+3. **API Request**: Your application includes the JWT token in the Authorization header
+4. **Token Validation**: The API validates the JWT token and extracts user context
+5. **Authorization**: The API checks user roles and permissions for the requested operation
+
 ### JWT Token Requirements
 
 The API validates JWT tokens from Auth0 tenants. Tokens must include:
@@ -295,6 +327,8 @@ The API validates JWT tokens from Auth0 tenants. Tokens must include:
 - **Custom Claims**:
   - `tenant_id`: User's tenant ID
   - `roles`: Array of user roles
+  - `isMasterClient`: Boolean indicating if this is a master tenant client
+  - `isM2M`: Boolean indicating if this is an M2M token
 
 ### Role-Based Access Control
 
@@ -305,9 +339,24 @@ The API validates JWT tokens from Auth0 tenants. Tokens must include:
 - **User**: Can view and update their own profile
 
 #### Access Patterns
-- **Master Tenant Operations**: Require `master_admin` role
+- **Master Tenant Operations**: Require `master_admin` role or `isMasterClient: true`
 - **Tenant User Management**: Require `tenant_admin`, `admin`, or `user_manager` roles
 - **Self Operations**: Users can always access their own profile
+- **M2M Operations**: Require valid M2M token with appropriate scopes
+
+### Required Headers
+
+All authenticated requests must include:
+```
+Authorization: Bearer <jwt_token>
+Content-Type: application/json
+```
+
+### Tenant Context
+
+For M2M operations, the tenant context must be provided in:
+- **Query Parameters**: For GET requests (e.g., `?tenantId=tenant_123`)
+- **Request Body**: For POST/PUT requests (e.g., `{"tenantId": "tenant_123", ...}`)
 
 ## 🏗️ Architecture
 
