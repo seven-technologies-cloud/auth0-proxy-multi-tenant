@@ -585,9 +585,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Mock mode for development
 - Full test suite with Auth0 integration
 - Production-ready error handling and logging
-
----
-
-**Built with ❤️ using Node.js, Express, and Auth0 Management API**
-
-*Your M2M application setup is correct and working perfectly! 🚀*
