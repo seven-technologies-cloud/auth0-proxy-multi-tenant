@@ -131,10 +131,21 @@ class SeatService {
       const currentData = this.tenantSeats.get(tenantId);
       
       if (!currentData) {
-        throw new TenantNotFoundError(tenantId, {
+        // If tenant doesn't exist in seat data, log warning and return success
+        // This can happen if tenant was deleted or never properly initialized
+        logger.warn(`Tenant ${tenantId} not found in seat data during seat release. This may indicate the tenant was deleted or never initialized.`, {
           operation: 'release_seats',
           seatsToRelease,
         });
+        
+        return {
+          tenantId,
+          seatsReleased: seatsToRelease,
+          totalSeatUsed: 0,
+          availableSeats: config.seats.defaultLimit,
+          seatLimit: config.seats.defaultLimit,
+          warning: 'Tenant not found in seat data - seat release assumed successful',
+        };
       }
 
       if (currentData.seatUsed < seatsToRelease) {

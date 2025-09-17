@@ -184,13 +184,46 @@ class UserService {
   }
 
   /**
+   * Get a specific user without fetching roles (to avoid circular dependency)
+   */
+  async _getUserWithoutRoles(tenantId, userId) {
+    try {
+      logger.info('Getting user (without roles):', userId);
+
+      // Get user from Auth0
+      const auth0User = await this.auth0Service.getUser(userId);
+
+      // Verify user belongs to the tenant (skip for M2M clients with null tenantId)
+      const userTenantId = auth0User.app_metadata?.tenant_id;
+      if (tenantId !== null && userTenantId !== tenantId) {
+        throw new UnauthorizedTenantAccessError(tenantId, {
+          userId,
+          userTenantId,
+        });
+      }
+
+      // Transform and return user (without roles)
+      const user = this.transformAuth0User(auth0User, tenantId);
+
+      logger.info('User retrieved successfully (without roles):', userId);
+      return user;
+    } catch (error) {
+      logger.error('Failed to get user (without roles):', error);
+      if (error.name && error.name.includes('Auth0')) {
+        throw ErrorFactory.fromAuth0Error(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Get a specific user
    */
   async getUser(tenantId, userId, requestedBy) {
     try {
       logger.info('Getting user:', userId);
 
-      // Get user from Auth0
+      // Get user from Auth0 (without roles to avoid circular dependency)
       const auth0User = await this.auth0Service.getUser(userId);
 
       // Verify user belongs to the tenant (skip for M2M clients with null tenantId)
@@ -284,8 +317,8 @@ class UserService {
     try {
       logger.info('Deleting user:', userId);
 
-      // Get user to verify tenant and get info for audit
-      const user = await this.getUser(tenantId, userId, deletedBy);
+      // Get user to verify tenant and get info for audit (without roles to avoid circular dependency)
+      const user = await this._getUserWithoutRoles(tenantId, userId);
 
       // Delete user from Auth0
       await this.auth0Service.deleteUser(userId);
@@ -324,8 +357,8 @@ class UserService {
     try {
       logger.info('Getting user roles:', userId);
 
-      // Verify user belongs to tenant
-      await this.getUser(tenantId, userId, requestedBy);
+      // Verify user belongs to tenant (without roles to avoid circular dependency)
+      await this._getUserWithoutRoles(tenantId, userId);
 
       // Get roles from Auth0
       const roles = await this.auth0Service.getUserRoles(userId);

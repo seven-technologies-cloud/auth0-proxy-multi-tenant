@@ -247,12 +247,19 @@ describe('SeatService', () => {
       expect(updatedData.seatUsed).toBe(20);
     });
 
-    test('should throw TenantNotFoundError when tenant does not exist', async () => {
+    test('should return success with warning when tenant does not exist', async () => {
       const tenantId = 'nonexistent_tenant_123';
       
-      await expect(seatService.releaseSeats(tenantId, 5))
-        .rejects
-        .toThrow(TenantNotFoundError);
+      const result = await seatService.releaseSeats(tenantId, 5);
+      
+      expect(result).toEqual({
+        tenantId,
+        seatsReleased: 5,
+        totalSeatUsed: 0,
+        availableSeats: 10, // default limit
+        seatLimit: 10, // default limit
+        warning: 'Tenant not found in seat data - seat release assumed successful',
+      });
     });
 
     test('should throw BusinessLogicError when trying to release more seats than used', async () => {

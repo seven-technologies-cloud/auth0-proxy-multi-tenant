@@ -18,6 +18,12 @@ class Auth0Service {
       roles: new Map(), // key: user_id, value: Set(roleIds)
     };
 
+    logger.info('Auth0Service constructor called', {
+      mockEnabled: this._mock.enabled,
+      mockConfigValue: config.development.mockAuth0Api,
+      envMockValue: process.env.MOCK_AUTH0_API
+    });
+
     this.initializeClients();
   }
 
@@ -35,6 +41,12 @@ class Auth0Service {
       }
 
       // Initialize real Management Client
+      logger.info('Initializing real Auth0 Management Client', {
+        domain: config.auth0.master.domain,
+        clientId: config.auth0.master.clientId ? '***' : 'MISSING',
+        audience: config.auth0.master.managementApiAudience,
+      });
+
       this.managementClient = new ManagementClient({
         domain: config.auth0.master.domain,
         clientId: config.auth0.master.clientId,
@@ -435,6 +447,30 @@ class Auth0Service {
    */
   async getUser(userId) {
     try {
+      logger.info('getUser called', {
+        userId,
+        mockEnabled: this._mock.enabled,
+        managementClientType: typeof this.managementClient,
+        managementClientKeys: this.managementClient ? Object.keys(this.managementClient) : null,
+        hasUsersNamespace: this.managementClient && this.managementClient.users,
+        usersNamespaceType: this.managementClient && this.managementClient.users ? typeof this.managementClient.users : null,
+        usersNamespaceKeys: this.managementClient && this.managementClient.users ? Object.keys(this.managementClient.users) : null,
+      });
+
+      // Add debugging to check if users namespace exists
+      if (!this.managementClient) {
+        throw new Error('Management client is not initialized');
+      }
+      
+      if (!this.managementClient.users) {
+        throw new Error('Management client users namespace is not available');
+      }
+      
+      if (typeof this.managementClient.users.get !== 'function') {
+        throw new Error('Management client users.get is not a function. Available methods: ' + 
+          Object.keys(this.managementClient.users || {}).join(', '));
+      }
+
       const userResult = await this.managementClient.users.get({ id: userId });
       const user = userResult.data || userResult;
       logger.info('User retrieved:', userId);
@@ -465,7 +501,31 @@ class Auth0Service {
    */
   async deleteUser(userId) {
     try {
-      await this.managementClient.deleteUser({ id: userId });
+      logger.info('deleteUser called', {
+        userId,
+        mockEnabled: this._mock.enabled,
+        managementClientType: typeof this.managementClient,
+        managementClientKeys: this.managementClient ? Object.keys(this.managementClient) : null,
+        hasUsersNamespace: this.managementClient && this.managementClient.users,
+        usersNamespaceType: this.managementClient && this.managementClient.users ? typeof this.managementClient.users : null,
+        usersNamespaceKeys: this.managementClient && this.managementClient.users ? Object.keys(this.managementClient.users) : null,
+      });
+
+      // Add debugging to check if users namespace exists
+      if (!this.managementClient) {
+        throw new Error('Management client is not initialized');
+      }
+      
+      if (!this.managementClient.users) {
+        throw new Error('Management client users namespace is not available');
+      }
+      
+      if (typeof this.managementClient.users.delete !== 'function') {
+        throw new Error('Management client users.delete is not a function. Available methods: ' + 
+          Object.keys(this.managementClient.users || {}).join(', '));
+      }
+
+      await this.managementClient.users.delete({ id: userId });
       logger.info('User deleted successfully:', userId);
       return { id: userId, deleted: true };
     } catch (error) {
@@ -479,7 +539,32 @@ class Auth0Service {
    */
   async getUserRoles(userId) {
     try {
-      const roles = await this.managementClient.getUserRoles({ id: userId });
+      logger.info('getUserRoles called', {
+        userId,
+        mockEnabled: this._mock.enabled,
+        managementClientType: typeof this.managementClient,
+        managementClientKeys: this.managementClient ? Object.keys(this.managementClient) : null,
+        hasUsersNamespace: this.managementClient && this.managementClient.users,
+        usersNamespaceType: this.managementClient && this.managementClient.users ? typeof this.managementClient.users : null,
+        usersNamespaceKeys: this.managementClient && this.managementClient.users ? Object.keys(this.managementClient.users) : null,
+      });
+
+      // Add debugging to check if users namespace exists
+      if (!this.managementClient) {
+        throw new Error('Management client is not initialized');
+      }
+      
+      if (!this.managementClient.users) {
+        throw new Error('Management client users namespace is not available');
+      }
+      
+      if (typeof this.managementClient.users.getRoles !== 'function') {
+        throw new Error('Management client users.getRoles is not a function. Available methods: ' + 
+          Object.keys(this.managementClient.users || {}).join(', '));
+      }
+
+      const rolesResult = await this.managementClient.users.getRoles({ id: userId });
+      const roles = rolesResult.data || rolesResult;
       logger.info(`Retrieved ${roles.length} roles for user: ${userId}`);
       return roles;
     } catch (error) {
@@ -493,7 +578,7 @@ class Auth0Service {
    */
   async assignRoles(userId, roleIds) {
     try {
-      await this.managementClient.assignRolestoUser(
+      await this.managementClient.users.assignRoles(
         { id: userId },
         { roles: roleIds }
       );
@@ -510,7 +595,7 @@ class Auth0Service {
    */
   async removeRoles(userId, roleIds) {
     try {
-      await this.managementClient.removeRolesFromUser(
+      await this.managementClient.users.removeRoles(
         { id: userId },
         { roles: roleIds }
       );
