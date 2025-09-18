@@ -1,0 +1,256 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+.nyc_output
+
+# Jest cache
+.jest-cache/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Build outputs
+dist/
+build/
+
+# Debug files
+debug-*.js
+test-*.js
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local development tools
+.roo/
+.zencoder/
+
+# Additional Node.js/API specific ignores
+.nyc_output/
+coverage/lcov-report/
+
+# Jest
+.jest/
+jest-results.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Diagnostic reports
+npm-debug.log*
+yarn-error.log*
+yarn-debug.log*
+
+# Runtime environment config
+.env.test
+.env.production
+
+# IDE and editor files
+.atom/
+.rider/
+.vs/
+.history/
+
+# Testing
+.nyc_output/
+coverage/
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Note: Uncomment this if you want to ignore package-lock.json
+# package-lock.json
+
+# Note: Uncomment this if you want to ignore yarn.lock
+# yarn.lock
+
+# ESLint
+.eslintcache
+
+# Prettier
+.prettiercache
+
+# Typescript
+*.tsbuildinfo
+
+# Next.js
+.next/
+
+# Nuxt.js
+.nuxt/
+
+# Vue CLI
+dist_electron/
+
+# SvelteKit
+.svelte-kit/
+
+# Vite
+.vite/
+
+# Auth0 specific files that might contain sensitive information
+auth0-credentials.json
+auth0-config.json
+
+# Security
+security-audit.json
+.nsp.json
+.security/
+
+# Docker
+.docker/
+.dockerignore
+
+# CI/CD
+.circleci/
+.github/
+.gitlab/
+.travis.yml
+.appveyor.yml
+.codecov.yml
+
+# Documentation
+docs/_book/
+
+# Benchmark
+bench/
+
+# Miscellaneous
+*.bak
+*.tmp
+*.old
+*.orig
+.DS_Store
+Thumbs.db
+
+# Ignore log files
+*.log
+
+# Ignore test coverage
+coverage/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore environment files
+.env*
+!.env.example
+
+# Ignore IDE files
+.vscode/
+.idea/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore build artifacts
+dist/
+build/
+out/
+
+# Ignore cache files
+.cache/
+.tmp/
+
+# Ignore npm/yarn/pnpm debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Ignore lock files if not needed in public repo
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Ignore security audit files
+.nsp.json
+.security/
+
+# Ignore Docker files that might contain sensitive info
+.docker/
+.dockerignore
+docker-compose.override.yml
+
+# Ignore CI/CD files that might contain sensitive info
+.circleci/
+.github/
+.gitlab/
+.travis.yml
+.appveyor.yml
+.codecov.yml
+
+# Ignore documentation build files
+docs/_book/
